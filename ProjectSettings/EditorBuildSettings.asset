@@ -9,14 +9,17 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 55daccc09a3b69647bbab145b54a3ab3
   - enabled: 1
+    path: Assets/Cenarios/Menu.unity
+    guid: c6679dc04d9823a44accd100377a8c27
+  - enabled: 1
     path: "Assets/Cenarios/Pra\xE7a.unity"
     guid: 380cc3126279e2c4e9cea2c48182082f
   - enabled: 1
-    path: Assets/Cenarios/Secretaria.unity
-    guid: 757f1aa3f72677b42b23abc5819a0faa
-  - enabled: 1
     path: Assets/Cenarios/Sala1.unity
     guid: efe5b455f068ef24dade82c68891ccb0
+  - enabled: 1
+    path: Assets/Cenarios/Secretaria.unity
+    guid: 757f1aa3f72677b42b23abc5819a0faa
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

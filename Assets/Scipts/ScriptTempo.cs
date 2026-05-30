@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.UI;
 
 public class TimeShiftController : MonoBehaviour
 {
@@ -13,9 +12,9 @@ public class TimeShiftController : MonoBehaviour
 
     [Header("Efeito Visual")]
     public Volume volumeTransicao;
-    public Image fadeImage;
-    public float duracaoTransicao = 2.6f;
-    public float tempoTelaOculta = 0.45f;
+    public float duracaoEntrada = 1.2f;
+    public float tempoTelaPreta = 1.5f;
+    public float duracaoSaida = 1.2f;
 
     [Header("Efeitos Extras Opcionais")]
     public Light luzTemporal;
@@ -45,8 +44,6 @@ public class TimeShiftController : MonoBehaviour
 
     private void Start()
     {
-        PrepararFadeImage();
-
         AplicarEstadoDasSalas();
         AplicarVisualFinal();
 
@@ -56,9 +53,17 @@ public class TimeShiftController : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current != null &&
-            Keyboard.current.tKey.wasPressedThisFrame &&
-            !estaTransicionando)
+        bool apertouTeclado = Keyboard.current != null &&
+                              Keyboard.current.tKey.wasPressedThisFrame;
+
+        bool apertouBotaoA = false;
+
+        if (Gamepad.current != null)
+        {
+            apertouBotaoA = Gamepad.current.buttonSouth.wasPressedThisFrame;
+        }
+
+        if ((apertouTeclado || apertouBotaoA) && !estaTransicionando)
         {
             StartCoroutine(RupturaTemporal());
         }
@@ -74,22 +79,23 @@ public class TimeShiftController : MonoBehaviour
         if (particulasTemporais != null)
             particulasTemporais.Play();
 
-        yield return InicioDaRuptura();
+        yield return EfeitoEntrada();
 
-        DefinirAlphaFade(1f);
+        AplicarTelaPreta();
 
-        yield return new WaitForSeconds(0.08f);
+        yield return new WaitForSeconds(0.15f);
 
         estaNoPassado = !estaNoPassado;
         AplicarEstadoDasSalas();
-        AplicarVisualFinal();
-
-        yield return new WaitForSeconds(tempoTelaOculta);
-
-        yield return FimDaRuptura();
 
         AplicarVisualFinal();
-        DefinirAlphaFade(0f);
+        AplicarTelaPreta();
+
+        yield return new WaitForSeconds(tempoTelaPreta);
+
+        yield return EfeitoSaida();
+
+        AplicarVisualFinal();
 
         if (luzTemporal != null)
             luzTemporal.intensity = 0f;
@@ -97,51 +103,55 @@ public class TimeShiftController : MonoBehaviour
         estaTransicionando = false;
     }
 
-    private IEnumerator InicioDaRuptura()
+    private IEnumerator EfeitoEntrada()
     {
         float tempo = 0f;
-        float duracao = duracaoTransicao * 0.45f;
 
-        while (tempo < duracao)
+        while (tempo < duracaoEntrada)
         {
             tempo += Time.deltaTime;
 
-            float progresso = Mathf.Clamp01(tempo / duracao);
-            float pulso = Mathf.Sin(progresso * Mathf.PI);
-            float tremor = Mathf.Abs(Mathf.Sin(progresso * Mathf.PI * 12f));
+            float progresso = Mathf.Clamp01(tempo / duracaoEntrada);
+            float pulsoPrincipal = Mathf.Sin(progresso * Mathf.PI);
+            float pulsoRapido = Mathf.Abs(Mathf.Sin(progresso * Mathf.PI * 8f));
+            float energia = Mathf.Clamp01(pulsoPrincipal + pulsoRapido * 0.25f);
 
-            DefinirAlphaFade(Mathf.Lerp(0f, 1f, progresso));
-            AplicarEfeitoRuptura(progresso, pulso, tremor);
+            AplicarEfeitoRuptura(energia, pulsoPrincipal);
+
+            if (colorAdjustments != null)
+                colorAdjustments.postExposure.value = Mathf.Lerp(0f, -8f, progresso);
 
             yield return null;
         }
     }
 
-    private IEnumerator FimDaRuptura()
+    private IEnumerator EfeitoSaida()
     {
         float tempo = 0f;
-        float duracao = duracaoTransicao * 0.55f;
 
-        while (tempo < duracao)
+        while (tempo < duracaoSaida)
         {
             tempo += Time.deltaTime;
 
-            float progresso = Mathf.Clamp01(tempo / duracao);
+            float progresso = Mathf.Clamp01(tempo / duracaoSaida);
             float inverso = 1f - progresso;
-            float pulso = Mathf.Sin(progresso * Mathf.PI);
-            float tremor = Mathf.Abs(Mathf.Sin(progresso * Mathf.PI * 10f));
+            float pulsoRapido = Mathf.Abs(Mathf.Sin(progresso * Mathf.PI * 8f));
+            float energia = Mathf.Clamp01(inverso + pulsoRapido * 0.25f);
 
-            DefinirAlphaFade(Mathf.Lerp(1f, 0f, progresso));
-            AplicarEfeitoRuptura(inverso, pulso, tremor);
+            AplicarEfeitoRuptura(energia, inverso);
+
+            if (colorAdjustments != null)
+            {
+                colorAdjustments.postExposure.value = Mathf.Lerp(-8f, 0f, progresso);
+                colorAdjustments.saturation.value = estaNoPassado ? -100f : 0f;
+            }
 
             yield return null;
         }
     }
 
-    private void AplicarEfeitoRuptura(float intensidade, float pulso, float tremor)
+    private void AplicarEfeitoRuptura(float energia, float pulsoPrincipal)
     {
-        float energia = Mathf.Clamp01(intensidade + tremor * 0.2f);
-
         if (vignette != null)
             vignette.intensity.value = Mathf.Lerp(0.15f, 0.95f, energia);
 
@@ -149,15 +159,18 @@ public class TimeShiftController : MonoBehaviour
             chromaticAberration.intensity.value = Mathf.Lerp(0f, 1f, energia);
 
         if (lensDistortion != null)
-            lensDistortion.intensity.value = Mathf.Lerp(0f, -0.55f, energia);
+            lensDistortion.intensity.value = Mathf.Lerp(0f, -0.45f, pulsoPrincipal);
 
         if (bloom != null)
-            bloom.intensity.value = Mathf.Lerp(0.4f, 12f, energia);
+            bloom.intensity.value = Mathf.Lerp(0.4f, 10f, energia);
 
         if (colorAdjustments != null)
         {
             colorAdjustments.contrast.value = Mathf.Lerp(0f, 45f, energia);
-            colorAdjustments.saturation.value = Mathf.Lerp(0f, -80f, energia);
+
+            float saturacaoFinal = estaNoPassado ? -100f : 0f;
+            colorAdjustments.saturation.value = Mathf.Lerp(saturacaoFinal, -80f, energia);
+
             colorAdjustments.colorFilter.value = Color.Lerp(
                 Color.white,
                 new Color(0.55f, 0.8f, 1f),
@@ -166,7 +179,33 @@ public class TimeShiftController : MonoBehaviour
         }
 
         if (luzTemporal != null)
-            luzTemporal.intensity = Mathf.Lerp(0f, 10f, energia);
+            luzTemporal.intensity = Mathf.Lerp(0f, 8f, energia);
+    }
+
+    private void AplicarTelaPreta()
+    {
+        if (vignette != null)
+            vignette.intensity.value = 1f;
+
+        if (chromaticAberration != null)
+            chromaticAberration.intensity.value = 1f;
+
+        if (lensDistortion != null)
+            lensDistortion.intensity.value = -0.45f;
+
+        if (bloom != null)
+            bloom.intensity.value = 0f;
+
+        if (colorAdjustments != null)
+        {
+            colorAdjustments.postExposure.value = -10f;
+            colorAdjustments.contrast.value = 100f;
+            colorAdjustments.saturation.value = -100f;
+            colorAdjustments.colorFilter.value = Color.black;
+        }
+
+        if (luzTemporal != null)
+            luzTemporal.intensity = 0f;
     }
 
     private void AplicarEstadoDasSalas()
@@ -194,36 +233,10 @@ public class TimeShiftController : MonoBehaviour
 
         if (colorAdjustments != null)
         {
+            colorAdjustments.postExposure.value = 0f;
             colorAdjustments.saturation.value = estaNoPassado ? -100f : 0f;
             colorAdjustments.contrast.value = estaNoPassado ? 15f : 0f;
             colorAdjustments.colorFilter.value = Color.white;
         }
-    }
-
-    private void PrepararFadeImage()
-    {
-        if (fadeImage == null)
-        {
-            Debug.LogWarning("Fade Image nao foi colocada no Inspector.");
-            return;
-        }
-
-        fadeImage.color = new Color(0f, 0f, 0f, 0f);
-        fadeImage.raycastTarget = false;
-
-        RectTransform rect = fadeImage.GetComponent<RectTransform>();
-
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-    }
-
-    private void DefinirAlphaFade(float alpha)
-    {
-        if (fadeImage == null)
-            return;
-
-        fadeImage.color = new Color(0f, 0f, 0f, alpha);
     }
 }

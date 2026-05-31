@@ -2,7 +2,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 public class DoorSceneLoader : MonoBehaviour
 {
@@ -17,10 +16,6 @@ public class DoorSceneLoader : MonoBehaviour
     [Header("Input")]
     public Key teclaTeste = Key.E;
 
-    [Header("Fade Opcional")]
-    public Image fadeImage;
-    public float duracaoFade = 1f;
-
     private bool estaCarregando;
     private bool botaoAEstavaPressionado;
 
@@ -28,8 +23,6 @@ public class DoorSceneLoader : MonoBehaviour
     {
         if (jogador == null && Camera.main != null)
             jogador = Camera.main.transform;
-
-        DefinirAlphaFade(0f);
     }
 
     private void Update()
@@ -79,33 +72,13 @@ public class DoorSceneLoader : MonoBehaviour
     {
         estaCarregando = true;
 
-        PlayerSpawnManager.spawnDestino = nomeDoSpawnDestino;
-
-        if (fadeImage != null)
+        if (SceneTransitionManager.Instance != null)
         {
-            float tempo = 0f;
-
-            while (tempo < duracaoFade)
-            {
-                tempo += Time.deltaTime;
-                float progresso = Mathf.Clamp01(tempo / duracaoFade);
-
-                DefinirAlphaFade(progresso);
-
-                yield return null;
-            }
+            SceneTransitionManager.Instance.LoadScene(nomeDaCenaDestino, nomeDoSpawnDestino);
+            yield break;
         }
 
+        PlayerSpawnManager.spawnDestino = nomeDoSpawnDestino;
         SceneManager.LoadScene(nomeDaCenaDestino);
-    }
-
-    private void DefinirAlphaFade(float alpha)
-    {
-        if (fadeImage == null)
-            return;
-
-        Color cor = fadeImage.color;
-        cor.a = alpha;
-        fadeImage.color = cor;
     }
 }

@@ -23,6 +23,7 @@ public class TimeShiftController : MonoBehaviour
 
     private bool estaNoPassado;
     private bool estaTransicionando;
+    private bool botaoAEstavaPressionado;
 
     private ColorAdjustments colorAdjustments;
     private Vignette vignette;
@@ -56,14 +57,25 @@ public class TimeShiftController : MonoBehaviour
         bool apertouTeclado = Keyboard.current != null &&
                               Keyboard.current.tKey.wasPressedThisFrame;
 
-        bool apertouBotaoA = false;
+        bool apertouBotaoA = Gamepad.current != null &&
+                             Gamepad.current.buttonSouth.wasPressedThisFrame;
 
-        if (Gamepad.current != null)
+        bool botaoAAtual = false;
+        UnityEngine.XR.InputDevice controleDireito =
+            UnityEngine.XR.InputDevices.GetDeviceAtXRNode(UnityEngine.XR.XRNode.RightHand);
+
+        if (controleDireito.isValid)
         {
-            apertouBotaoA = Gamepad.current.buttonSouth.wasPressedThisFrame;
+            controleDireito.TryGetFeatureValue(
+                UnityEngine.XR.CommonUsages.primaryButton,
+                out botaoAAtual
+            );
         }
 
-        if ((apertouTeclado || apertouBotaoA) && !estaTransicionando)
+        bool apertouBotaoAQuest = botaoAAtual && !botaoAEstavaPressionado;
+        botaoAEstavaPressionado = botaoAAtual;
+
+        if ((apertouTeclado || apertouBotaoA || apertouBotaoAQuest) && !estaTransicionando)
         {
             StartCoroutine(RupturaTemporal());
         }
